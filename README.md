@@ -22,7 +22,7 @@ To visualize correlations, we have different types of plots at: `voxelwiseAnalys
 
 ## Hypothesis Testing
 
-The data is used for both confirmatory and exploratory purpose: confirmatory because we want to test the hypothesis that midline brain dopamine systems monitor prediction error, and use it as a signal to trigger event updating; exploratory because there might be other signals triggering event updating (e.g. uncertainty) and we want to identify neural correlates underlying these signals. Analysis approach: build computational models embodying different triggering mechanisms, and correlate these triggering signals with neural activity in different brain regions.
+The data is used for both confirmatory and exploratory purpose: confirmatory because we want to test the hypothesis that midline brain dopamine system monitor prediction error, and use it as a signal to trigger event updating; exploratory because there might be other signals triggering event updating (e.g. uncertainty) and we want to identify neural correlates underlying these signals. Analysis approach: build computational models embodying different triggering mechanisms, and correlate these triggering signals with neural activity in different brain regions.
 
 # Data
 ## Data Collection
