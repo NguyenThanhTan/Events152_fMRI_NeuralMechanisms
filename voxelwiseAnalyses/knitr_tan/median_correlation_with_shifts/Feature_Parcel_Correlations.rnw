@@ -11,6 +11,8 @@
 rm(list = ls())
 library(knitr)
 opts_chunk$set(tidy.opts=list(width.cutoff=100), options(width=80))
+# knitr::opts_knit$set(out.format = "pdf_document")
+# knitr::opts_knit$set(out.file = "file_b_dec.pdf")
 # DCL e152 piloting. started 4 October 2022 by Jo Etzel
 # fixed movie stat input files, 10 October 2022
 
