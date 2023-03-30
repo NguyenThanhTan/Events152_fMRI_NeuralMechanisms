@@ -1,0 +1,16 @@
+name: fmri-light
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7
+  - joblib
+  - scipy
+  - pandas
+  - opencv=3.4.2
+  - ipython
+  - jupyter
+  - jupytext
+  - pip
+  - plotly
+  - python-kaleido

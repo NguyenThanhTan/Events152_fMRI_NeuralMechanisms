@@ -1,0 +1,5 @@
+id0,id1,img
+sub-22,run-1,fmriprep/fmriprep/sub-22/func/sub-22_task-movie_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+sub-22,run-2,fmriprep/fmriprep/sub-22/func/sub-22_task-movie_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+sub-22,run-3,fmriprep/fmriprep/sub-22/func/sub-22_task-movie_run-3_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+sub-22,run-4,fmriprep/fmriprep/sub-22/func/sub-22_task-movie_run-4_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz

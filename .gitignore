@@ -73,4 +73,10 @@
 /sub-10_edge_connectivity.png
 /sub-11_edge_connectivity.png
 /sub-12_edge_connectivity.png
-/voxelwiseAnalyses
+/voxelwiseAnalyses/parcel_timeseries/xcp_24p_gsr
+/voxelwiseAnalyses/parcel_timeseries/np2
+/voxelwiseAnalyses/parcel_timeseries/xcp_24p
+/voxelwiseAnalyses/parcel_timeseries/xcp_36p_despike
+/voxelwiseAnalyses/parcel_timeseries/xcp_36p_scrub
+/voxelwiseAnalyses/feature_parcel_correlation/cache
+/voxelwiseAnalyses/feature_parcel_correlation/figure
