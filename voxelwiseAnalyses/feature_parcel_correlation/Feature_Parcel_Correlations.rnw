@@ -73,9 +73,6 @@ suff_subcortical_xcp <- "TianSubcortexS2x3T_ts";
 
 TR <- 1.483;   # TR in seconds
 
-# subcortical_94x111x94.nii.gz parcel labels, for np2
-# subcort.tbl <- read.csv(paste0(in.path, "subcorticalKey.csv"), stringsAsFactors=FALSE);  
-# subcortical.ids <- subcort.tbl$HCP.label
 # indexTable.csv is fetched from: https://github.com/PennLINC/xcpEngine/tree/master/atlas/TianSubcortexS2x3T and then modified to replace "-" with "_", avoiding R confusion (when reading the file, R will treat "-" as ".")
 subcort.tbl <- read.csv(paste0(in.path, "atlas/indexTable.csv"), stringsAsFactors=FALSE);  
 subcortical.ids <- subcort.tbl$node_label
