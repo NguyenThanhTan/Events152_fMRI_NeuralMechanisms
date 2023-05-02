@@ -1,27 +1,25 @@
 Specifically how files in this directory are used for hypothesis testing is described in the master README.md. This README is a technical supplementary 
 
-##### Prepare input to AFNI
-###### Prepare regressors, masking list, and blur/scale/lpi-orient data
+# Prepare input to AFNI
+## Prepare regressors, masking list, and blur/scale/lpi-orient data
 To prepare input to AFNI to run FIR, we need to prepare 6 motion regressors, a list of TRs that should be masked because they have high framewise displacement (FD), and voxel BOLD timeseries that are blurred, scaled, and lpi-oriented from fmriprep data. \
 `voxelwiseAnalyses/finite_impulse_response/StroopCW_PreGLM_2023.03.17.sh` was copied from `/data/nil-bluearc/ccp-hcp/StroopCW/CODE/StroopCW_PreGLM_2023.03.17.sh` \
-Then, a copy was made and adapted to work with our fmriprep data. `voxelwiseAnalyses/finite_impulse_response/StroopCW_PreGLM_2023.03.17 - Copy.sh`
-To run the script: `/bin/bash voxelwiseAnalyses/finite_impulse_response/StroopCW_PreGLM_2023.03.17 - Copy.sh` \
+Then, a copy was made and adapted to work with our fmriprep data. `voxelwiseAnalyses/finite_impulse_response/StroopCW_PreGLM_2023.03.17 - Copy.sh` \
+Run the script: `/bin/bash voxelwiseAnalyses/finite_impulse_response/StroopCW_PreGLM_2023.03.17 - Copy.sh` \
 FD to mask TRs is 0.5. Jo ran an analysis and found out that even with 0.5 (instead of 0.9), there are not a lot of bad frames!
-###### Prepare event files
+## Prepare event files
 To prepare input to AFNI to run FIR, we need events (regressors of interest). Event boundary has two grains, fine and coarse. Segmentation data `voxelwiseAnalyses/finite_impulse_response/segmentation.csv` was copied from `Box\DCL_ARCHIVE\Documents\Events\exp152_fMRIneuralmechanisms\Analysis\segmentation.csv`, it was created by running `Box\DCL_ARCHIVE\Documents\Events\exp152_fMRIneuralmechanisms\Analysis\analyze_session_segmentation_only.py` on 07/11/2022 (the last participant was in 05/28/2022, so this should have segmentation data for all subjects) \
-
 Events file were created by running `voxelwiseAnalyses/finite_impulse_response/afni_events_from_segmentation.ipynb`, which generate event files to `voxelwiseAnalyses/finite_impulse_response/EVTs/` \
-For runs that should be excluded from GLMs or do not have boundary data from participants, they receive an "*" in the event files. This approach is consistent with the strategy to preprocess all subjects/sessions, and filter out people in real analysis \
+For runs that should be excluded from GLMs or do not have boundary data from participants, they receive an "*" in the event files. This approach is consistent with the strategy to preprocess all subjects/sessions, and filter out people in real analysis
 
-##### Run GLMs with AFNI
+# Run GLMs with AFNI
 The template is copied from `/data/nil-bluearc/ccp-hcp/StroopCW/CODE/GLMcode/GLMs_vol.R` to `voxelwiseAnalyses/finite_impulse_response/GLMs_vol.R`. This script run GLMs for each voxel, and also perform parcel average for the output STATS from AFNI. This script is ran by executing `voxelwiseAnalyses/finite_impulse_response/runGLMs_fMRI.R` \
-
-Results are saved at `voxelwiseAnalyses/finite_impulse_response/AFNI_ANALYSIS/sub-02/RESULTS/` \
-###### Design Matrices
+Results are saved at `voxelwiseAnalyses/finite_impulse_response/AFNI_ANALYSIS/sub-02/RESULTS/` 
+## Design Matrices
 For each "event" (a fine boundary or a coarse boundary), we are interested in 10 seconds before the boundary and 10 seconds after the boundary. Thus, we used TENT(-10, 10, 11): 11 knots, 2s interval, from -10s to 10s of the "event" \
 We run GLMs for each voxel with three design matrices. \
 A design matrix with only fine event boundaries. This analysis identifies voxels responsive to fine event boundaries, by looking at coefficients of 11 knots. \
 A design matrix with only coarse event boundaries. This analysis identifies voxels responsive to coarse event boundaries, by looking at coefficients of 11 knots. \
-A design matrix with both coarse and fine event boundaries. The above analyses might be confounded. The idea is that, conceptually coarse event segmentation (e.g. making coffee -> preparing a bagel) usually encloses or coincides with fine segmentation (e.g. pouring coffee to the cup -> fetching a bagel from a drawer). Suppose there's a brain region that is "sensitive only to fine event boundaries," when we run GLMs separately (with the two analyses above), we'll likely see this brain region responding to both fine event boundaries and coarse event boundaries (high coefficients). When we include both fine boundaries and coarse boundaries as independent variables in GLMs, coefficients of coarse boundaries for that brain region will likely be around 0s. On the other hand, a brain region that is sensitive to coarse event boundaries, above and beyond fine event boundaries will likely have high coefficients for coarse event boundaries. Conversely, a brain region that is only responsive to coarse boundaries can also have high coefficients in the fine event boundary analysis. This analysis tries to parcel out the correlation between fine event boundaries and coarse event boundaries. A drawback is that a high correlation between fine event boundaries and coarse event boundaries can reduce statistical power a lot. \
-#### Visualize Results
-AFNI output a lot of statistics, we are interested in coefficients of regressors of interest (knots). We use `voxelwiseAnalyses/finite_impulse_response/knitr/sub01_brains/sub01_GLMs_brains.rnw` to visualize the results. \
+A design matrix with both coarse and fine event boundaries. The above analyses might be confounded. The idea is that, conceptually coarse event segmentation (e.g. making coffee -> preparing a bagel) usually encloses or coincides with fine segmentation (e.g. pouring coffee to the cup -> fetching a bagel from a drawer). Suppose there's a brain region that is "sensitive only to fine event boundaries," when we run GLMs separately (with the two analyses above), we'll likely see this brain region responding to both fine event boundaries and coarse event boundaries (high coefficients). When we include both fine boundaries and coarse boundaries as independent variables in GLMs, coefficients of coarse boundaries for that brain region will likely be around 0s. On the other hand, a brain region that is sensitive to coarse event boundaries, above and beyond fine event boundaries will likely have high coefficients for coarse event boundaries. Conversely, a brain region that is only responsive to coarse boundaries can also have high coefficients in the fine event boundary analysis. This analysis tries to parcel out the correlation between fine event boundaries and coarse event boundaries. A drawback is that a high correlation between fine event boundaries and coarse event boundaries can reduce statistical power a lot. 
+ Visualize Results
+AFNI output a lot of statistics, we are interested in coefficients of regressors of interest (knots). We use `voxelwiseAnalyses/finite_impulse_response/knitr/sub01_brains/sub01_GLMs_brains.rnw` to visualize the results. 
