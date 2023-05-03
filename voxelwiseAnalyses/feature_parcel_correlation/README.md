@@ -3,7 +3,7 @@ Specifically how files in this directory are used for hypothesis testing is desc
 # Correlate parcel-average BOLD with visual/segmentation signals
 
 `voxelwiseAnalyses/feature_parcel_correlation/Feature_Parcel_Correlations.rnw` is designed such as you can correlate any type of feature (pixel change mean, prediction error, uncertainty, etc.) with any type of BOLD signals (xcp_24p_gsr or np2 or xcp_24p). It will save correlations and plot them on brain slices. \
-After you knitr this file, the pdf name will be `voxelwiseAnalyses/feature_parcel_correlation/Feature_Parcel_Correlations.pdf`. Depending on the configurations you use while running it, you might want to change the pdf file name to reflect the configuration. 
+After you knitr this file, the pdf name will be `voxelwiseAnalyses/feature_parcel_correlation/Feature_Parcel_Correlations.pdf`. Depending on the configurations you use while running it, you might want to change the pdf file name to reflect the configuration (e.g. `voxelwiseAnalyses/feature_parcel_correlation/Feature_Parcel_Correlations_pcm_xcp_24p_gsr.pdf` where pixel change mean is correlated with parcel timeseries from xcp_24p_gsr config). 
 
 # Visualization
 
