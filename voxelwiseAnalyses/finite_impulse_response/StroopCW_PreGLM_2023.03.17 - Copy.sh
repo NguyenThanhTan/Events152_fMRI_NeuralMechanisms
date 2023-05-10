@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-    # uses: (1) Extract, demean motion parameter and make censor(threshold=0.3) file (using fmriPrep's "*confound.tsv")
+    # uses: (1) Extract, demean motion parameter and make censor(threshold=0.5) file (using fmriPrep's "*confound.tsv")
     #       (2) Make data ready for afni GLM ( blur, scale (optionally-reorinet to LPI )
 
 # If needed, do --> source ~/.login  (at terminal to load afni)
@@ -15,10 +15,13 @@ read -p "ENTER SUBJECT IDs, SCW### format; e.g: SCW997 (You can copy/paste a str
 #runs=3
 subjects=${SUBJ}
 #subjects="3905"
+#subjects="sub-46"
 
 echo " Script running - Do not close terminal window"
-TASKS=("StroopBas" "StroopPro" "StroopRea")
-TASKRUNS=("2" "2" "2") #To be indexed with TASKS;should match order of tasks
+# TASKS=("StroopBas" "StroopPro" "StroopRea")
+TASKS=("movie")
+# TASKRUNS=("2" "2" "2")
+TASKRUNS=("4") #To be indexed with TASKS;should match order of tasks
 TASKIndex=0
 
 #===============================================================================================#
@@ -26,19 +29,21 @@ TASKIndex=0
 #===============================================================================================#
 for subject in ${subjects} ; do #main subject loop
     echo " subject no: $subject"
-    subDir="/data/nil-bluearc/ccp-hcp/StroopCW/DATA/PREPROCESSED/"$subject"/derivatives/fmriprep/sub-"$subject"/ses-1/func"
+    # subDir="/data/nil-bluearc/ccp-hcp/StroopCW/DATA/PREPROCESSED/"$subject"/derivatives/fmriprep/sub-"$subject"/ses-1/func"
+    subDir="/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/fmriprep/fmriprep/"$subject"/func"
     #Skip subject in subjects list if preprocessed data doesn't exist - that means that a valid subject wasn't entered
     if [ ! -d "${subDir}" ]; then
         echo "no preprocessed data directory found for this subject; skipping subject."
     else
         #resultsDir="/data/MARCER/NickB/preGLM/output/sub-"$subject""
-        resultsDir="/data/nil-bluearc/ccp-hcp/StroopCW/DATA/AFNI_ANALYSIS/"$subject"/INPUT_DATA"
+        # resultsDir="/data/nil-bluearc/ccp-hcp/StroopCW/DATA/AFNI_ANALYSIS/"$subject"/INPUT_DATA"
+        resultsDir="/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/finite_impulse_response/AFNI_ANALYSIS/"$subject"/INPUT_DATA"
 
         # create result dir if it doesn't exists:
         if [[  ! -d "${resultsDir}" ]]; then
 		mkdir -p "${resultsDir}"
 		#open permissions for the new directories created
-		chmod ug+rwx "/data/nil-bluearc/ccp-hcp/StroopCW/DATA/AFNI_ANALYSIS/$subject/"
+		chmod ug+rwx "/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/finite_impulse_response/AFNI_ANALYSIS/$subject/"
 		chmod ug+rwx  ${resultsDir}
         else
 		echo output dir "${resultsDir}" already exists.
@@ -71,11 +76,12 @@ for subject in ${subjects} ; do #main subject loop
                 find ${resultsDir} -maxdepth 1 -type f -name ${subject}_${task}_FD_mask.txt -delete
 
                 for ((run=1; run<=TASKRUNS[TASKIndex]; run++)); do
-                    file="${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_desc-confounds_timeseries.tsv"
+                    # file="${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_desc-confounds_timeseries.tsv"
+                    file="${subDir}/"${subject}"_task-${task}_run-"${run}"_desc-confounds_timeseries.tsv"
                     if [[ -f "$file" ]];  then
                         echo $file
                     else
-                        echo "WARNING : Could not find confounds.tsv file for ${subject} ${task} run ${run}"
+                        echo "WARNING : Could not find confounds.tsv file for ${subject} ${task} run ${run} in ${file}, exit"
                     exit
                     fi
                     
@@ -92,7 +98,7 @@ for subject in ${subjects} ; do #main subject loop
                     sleep 0.1
                     tail -n+2 ${subject}_${task}_FD0${run}.txt >> ${subject}_${task}_FD.txt
 
-                done # !!!!!!!!!!! I think there was an error that previously ran the next afni call (a couple lines down) for each run in the loop, which would overwrite the FD Mask file for every task run loop
+                done # 
                 #clear out intermediary/temp files
                 find ${resultsDir} -maxdepth 1 -type f -name ${subject}_${task}_'FD0*.txt' -delete 
 
@@ -100,7 +106,9 @@ for subject in ${subjects} ; do #main subject loop
                 # CHANGE the n/a rows to 0:   sed -i '1s/^/0\n/' _6regressors.txt
                 sed -i 's/n\/a/0/g' ${subject}_${task}_FD.txt #globally replace pattern "n/a" with "0" in the text file 
 
-                1deval -expr 'within(a,0,0.9)' -a "${subject}_${task}_FD.txt" > "${subject}_${task}_FD_mask.txt"  # call afni to make the censoring file
+                # Jo ran an analysis and found out that 0.5 is pretty good for our data. Moreover, *_FD_mask.txt
+                # is used in the GLMs_vol.R code, not the *_censor_list.1D
+                1deval -expr 'within(a,0,0.5)' -a "${subject}_${task}_FD.txt" > "${subject}_${task}_FD_mask.txt"  # call afni to make the censoring file
             fi
 
             sleep 0.1
@@ -118,11 +126,12 @@ for subject in ${subjects} ; do #main subject loop
                 find ${resultsDir} -maxdepth 1 -type f -name ${subject}_${task}_6regressors.txt -delete
 
                 for ((run=1; run<=TASKRUNS[TASKIndex]; run++)); do
-                    file="${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_desc-confounds_timeseries.tsv"
+                    # file="${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_desc-confounds_timeseries.tsv"
+                    file="${subDir}/"${subject}"_task-${task}_run-"${run}"_desc-confounds_timeseries.tsv"
                     if [[ -f "$file" ]];  then
                         echo $file
                     else
-                        echo "WARNING : Could not find confounds.tsv file for ${subject} ${task} run ${run}"
+                        echo "WARNING : Could not find confounds.tsv file for ${subject} ${task} run ${run} from ${file}, exit"
                     exit
                     fi
                     
@@ -152,8 +161,10 @@ for subject in ${subjects} ; do #main subject loop
             find ${resultsDir} -maxdepth 1 -type f -name ${subject}_${task}_total_tr.txt -delete
             for ((run=1; run<=TASKRUNS[TASKIndex]; run++)); do
                 #if [[ -f "$subDir/sub-COGED"$subject"_ses-01_task-NbackCOGED_run-"$run"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]] ; then
-                if [[ -f "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]];  then
-                    echo $(3dinfo -nv "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz") >${subject}_${task}_tr_count0${run}.txt
+                # if [[ -f "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]];  then
+                if [[ -f "${subDir}/"${subject}"_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]];  then
+                    # echo $(3dinfo -nv "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz") >${subject}_${task}_tr_count0${run}.txt
+                    echo $(3dinfo -nv "${subDir}/"${subject}"_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz") >${subject}_${task}_tr_count0${run}.txt
                 else
                     echo "WARNING : could not find bold file for ${subj} run ${run}"
                     exit
@@ -188,21 +199,24 @@ for subject in ${subjects} ; do #main subject loop
                     -write "${resultsDir}/${subject}_${task}_6regressors_demean.txt" \
                     -overwrite
             fi
-            if [[ -f "${subject}_${task}_censor_list.1D" || -f "${subject}_${task}_censor_data.1D" || -f "${subject}_${task}_censor_count.txt" ]]; then
-                echo " censor_list.1D, censor_data.1D, and/or censor_count.txt for ${subject} ${task} already exists; skipping step..."
-            else
+            # Tan examine GLMs_vol.R copied from /data/nil-bluearc/ccp-hcp/StroopCW/CODE/GLMcode/GLMs_vol.R
+            # and found out that *_censor_list.1D or *_censor_data.1D are not used, 
+            # => comment this to avoid confusion
+            # if [[ -f "${subject}_${task}_censor_list.1D" || -f "${subject}_${task}_censor_data.1D" || -f "${subject}_${task}_censor_count.txt" ]]; then
+            #     echo " censor_list.1D, censor_data.1D, and/or censor_count.txt for ${subject} ${task} already exists; skipping step..."
+            # else
 
-                1d_tool.py -infile "${subject}_${task}_6regressors.txt" \
-                    -set_run_lengths $total_tr \
-                    -derivative -censor_prev_TR \
-                    -collapse_cols euclidean_norm\
-                    -moderate_mask -0.3 0.3    \
-                    -write_censor  ${subject}_${task}_censor_list.1D \
-                    -write_CENSORTR ${subject}_${task}_censor_data.1D \
-                    -verb 0    \
-                    -show_censor_count 1> ${subject}_${task}_censor_count.txt \
-                    -overwrite
-            fi
+            #     1d_tool.py -infile "${subject}_${task}_6regressors.txt" \
+            #         -set_run_lengths $total_tr \
+            #         -derivative -censor_prev_TR \
+            #         -collapse_cols euclidean_norm\
+            #         -moderate_mask -0.3 0.3    \
+            #         -write_censor  ${subject}_${task}_censor_list.1D \
+            #         -write_CENSORTR ${subject}_${task}_censor_data.1D \
+            #         -verb 0    \
+            #         -show_censor_count 1> ${subject}_${task}_censor_count.txt \
+            #         -overwrite
+            # fi
 
             #-----------------------------------------------------------------------------------------------       
             echo "===================================================================="
@@ -210,8 +224,10 @@ for subject in ${subjects} ; do #main subject loop
             echo "===================================================================="
 
             for ((run=1; run<=TASKRUNS[TASKIndex]; run++)); do
-                if [[ -f "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]] ; then
-                    file=sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+                # if [[ -f "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]] ; then
+                if [[ -f "${subDir}/"${subject}"_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]] ; then
+                    # file=sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+                    file="${subject}"_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
                 else
                     echo "WARNING : could not find bold file for ${subject} ${task} run ${run}"
                     exit
@@ -258,105 +274,10 @@ for subject in ${subjects} ; do #main subject loop
                     fi
                 fi
 
-
-                echo "===================================================================="
-                echo "========= running SURFACE: scale (to make afni GLMs happy) ========="
-                echo "===================================================================="
-                #### ADD here for scaling the surfaces. SHOULD (hopefully) be the same syntax and commands for the surfaces,
-                #### but use the .gii images as input and output instead of the nii.gz ones.
-                #### plus a L & R hemisphere for each run. e.g., sub-3085_ses-1_task-COGED_run-2_space-fsaverage5_hemi-R_bold.func.gii
-                #### and sub-3085_ses-1_task-COGED_run-2_space-fsaverage5_hemi-L_bold.func.gii are the surface versions of
-                #### sub-3085_ses-1_task-COGED_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz.
-
-                #### LPI, blur doesn't apply to surfaces (not sensible for them); the same FD applies to surfaces and volumes
-                #### so just need to do the FD, LPI, blur bits once. 
-
-                #check for surface files
-                
-                files="sub-${subject}_ses-1_task-${task}_run-${run}_space-fsaverage5_hemi-L_bold.func.gii sub-${subject}_ses-1_task-${task}_run-${run}_space-fsaverage5_hemi-R_bold.func.gii"
-                
-                for file in ${files}; do
-                    # Does file exist?
-                    echo "${subDir}/${file}"
-                    if [[ -e "${subDir}/${file}" ]]; then
-                        #batch_job="demean_descale_Surface_${subject}_${file}"
-
-
-                        #pushd ${resultsDir}
-                        #echo "-prefix ${subDir}/mask_$file ${subDir}/$file" ??? not sure what this is supposed to do (mask vs below mean?)
-
-                        #Skip this step if final output, scale_$file, already exists
-                        if [[ -f "${resultsDir}/scale_$file" ]]; then
-                            echo " scale file for ${subject} ${task} already exists; skipping step..."
-                        else
-
-                            3dTstat \
-                                -prefix ${resultsDir}/mean_$file ${subDir}/$file
-
-                            3dcalc \
-                                -a ${subDir}/$file \
-                                -b ${resultsDir}/mean_$file \
-                                -expr 'min(200, a/b*100)*step(a)*step(b)' \
-                                -prefix ${resultsDir}/scale_$file
-
-                            # reorient to LPI
-
-                            #3dresample \
-                            #    -prefix ${resultsDir}/lpi_scale_$file \
-                            #    -inset ${resultsDir}/scale_$file
-
-                            #popd
-
-                            # to keep any of these, just delete its rm statement:
-                            #if [ -f ${resultsDir}/lpi_scale_$file ]; then
-                            #    rm ${resultsDir}/mean_$file
-                            #    rm ${resultsDir}/scale_$file
-                            #    #rm ${file}
-                            #fi
-
-                            # to keep any of these, just delete its rm statement:
-                            if [ -f ${resultsDir}/scale_$file ]; then
-                                rm ${resultsDir}/mean_$file
-                                #rm ${file}
-                            fi
-                        fi
-
-                    else
-                        echo "WARNING : file ${file} doesn't exist, skipping it. Check if this is correct."
-                    fi # file exists
-
-                done # for each file in files
-                #    if [[ -f "${subDir}/sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" ]] ; then
-                #    file=sub-"${subject}"_ses-1_task-${task}_run-"${run}"_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
-               # else
-                #    echo "WARNING : could not find bold file for ${subject} ${task} run ${run}"
-                #    exit
-                #fi
-
-
-                # https://afni.nimh.nih.gov/pub/dist/doc/program_help/3dTstat.html  calculates the voxelwise mean
-                #3dTstat \
-                #     -prefix ${resultsDir}/mean_blur6_$file ${resultsDir}/blur6_$file
-
-                # 3dcalc \
-                #     -a ${resultsDir}/blur6_$file \
-                #     -b ${resultsDir}/mean_blur6_$file \
-                #     -expr 'min(200, a/b*100)*step(a)*step(b)' \
-                #     -prefix ${resultsDir}/scale_blur6_$file
-
-
-                # # to keep any of these, just delete its rm statement:
-                # # only delete these if the final file has been made
-
-                # if [ -f ${resultsDir}/lpi_scale_blur6_$file ]; then
-                #     rm ${resultsDir}/blur6_$file
-                #     rm ${resultsDir}/mean_blur6_$file
-                #     rm ${resultsDir}/scale_blur6_$file
-                # fi
-
             done   # end run loop
         done # end Task Loop
-        } >> ${resultsDir}/"sub-"$subject"_MARCER_PreGLMLog.txt" 2>&1
+        # } >> ${resultsDir}/"sub-"$subject"_MARCER_PreGLMLog.txt" 2>&1
+        }  2>&1 | tee ${resultsDir}/"$subject"_fMRI152_PreGLMLog.txt
     fi
 done  # end subject loop
 # exit

@@ -13,7 +13,7 @@ Events file were created by running `voxelwiseAnalyses/finite_impulse_response/a
 For runs that should be excluded from GLMs or do not have boundary data from participants, they receive an "*" in the event files. This approach is consistent with the strategy to preprocess all subjects/sessions, and filter out people in real analysis
 
 # Run GLMs with AFNI
-The template is copied from `/data/nil-bluearc/ccp-hcp/StroopCW/CODE/GLMcode/GLMs_vol.R` to `voxelwiseAnalyses/finite_impulse_response/GLMs_vol.R`. This script run GLMs for each voxel, and also perform parcel average for the output STATS from AFNI. This script is ran by executing `voxelwiseAnalyses/finite_impulse_response/runGLMs_fMRI.R` \
+The template is copied from `/data/nil-bluearc/ccp-hcp/StroopCW/CODE/GLMcode/GLMs_vol.R` to `voxelwiseAnalyses/finite_impulse_response/GLMs_vol.R`, then it's adapted to work with fMRI152 data. This script run GLMs for each voxel, and also perform parcel average for the output STATS from AFNI. This script is called by executing `voxelwiseAnalyses/finite_impulse_response/runGLMs_fMRI.R`, which is a high-level script to run call `GLMs_vol.R` and log results \
 Results are saved at `voxelwiseAnalyses/finite_impulse_response/AFNI_ANALYSIS/sub-02/RESULTS/` 
 ## Design Matrices
 For each "event" (a fine boundary or a coarse boundary), we are interested in 10 seconds before the boundary and 10 seconds after the boundary. Thus, we used TENT(-10, 10, 11): 11 knots, 2s interval, from -10s to 10s of the "event" \
