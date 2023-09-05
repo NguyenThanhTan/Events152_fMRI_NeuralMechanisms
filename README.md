@@ -42,13 +42,10 @@ Script to process raw data into free-recall and recognition and segmentation is 
 ## Hypothesis testing
 ### Brain regions tracking continuous segmentation signals
 #### Methods
-We treat the computational model (SEM) as an instrument, measuring prediction error and uncertainty that people experience in the 4 activities. We correlate SEM's prediction error and uncertainty with neural activity in different parcels. \
-Confirmatory analysis: we want to test the hypothesis that midline brain dopamine system monitor prediction error, and use it as a signal to trigger event updating; \
-Exploratory analysis: there might be other signals triggering event updating (e.g. uncertainty) and we want to identify neural correlates underlying these signals. \
-For the comfirmatory analysis: We realized that we don't have the resolution to test the midline brain dopamine system. \
-For the exploratory analysis, we need to correct for multiple comparisons. We use FDR to correct for multiple comparisons. \
+We treat the computational model (SEM) as an instrument, measuring prediction error and uncertainty that people experience in the 4 activities. We correlate SEM's prediction error and uncertainty with neural activity in different parcels to determine brain parcels tracking these signals. \
+For this exploratory analysis, we need to correct for multiple comparisons. We use FDR to correct for multiple comparisons. \
 
-Details how to run this analysis is in `voxelwiseAnalyses/feature_parcel_correlation/README.md`
+Details on how to run this analysis are in `voxelwiseAnalyses/feature_parcel_correlation/README.md`
 
 
 
