@@ -1,0 +1,197 @@
+\documentclass{article}
+\addtolength{\oddsidemargin}{-1.25in}
+\addtolength{\evensidemargin}{-1.25in}
+\addtolength{\textwidth}{2.5in}
+\addtolength{\topmargin}{-.875in}
+\addtolength{\textheight}{1.75in}
+\begin{document}
+
+<<startup, echo=FALSE, message=FALSE>>=
+# fMRI152 (naturalistic stimuli watching) GLMs
+# started 16 August 2023 by Jo. Adapted from /data/MARCER/JoEtzel/knitr_testing/3085/3085_GLMs_IAPS_ONs_brains.rnw and 
+# /data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/knitr/parcelCorrelations_withOnsets/movieParcelCorrelations_mean_xcp24p_gsr.rnw
+
+library(RNifti);  # volumes
+library(WRS2);    # robust SEM
+
+rm(list=ls());  
+options(warnPartialMatchDollar=TRUE);   # safety option
+
+sub.ids <- c(paste0("sub-0", 3:9), paste0("sub-", 12:46));   # not 1, 2, or 47 since they all lack BOTH
+
+
+atlas.path <- "/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/atlas/";
+glm.path <- "/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/finite_impulse_response/AFNI_ANALYSIS/";
+afni.path <- "/usr/local/pkg/afni_22/";   # path to the afni function executables (for 3dinfo)
+#pic.path <- "/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/parcel_images/Schaefer400x7_TianSubcortexS2x3T/";  # parcel jpgs
+
+do.trim <- 0.1;   # how much to trim in the robust stats
+
+sch.ids <- 1:400;   # Schaefer2018_400x7 parcellation
+subcort.ids <- 1:32;   # TianSubcortexS2x3TNodeNames.txt
+
+# Scaefer parcellation-related stuff so can label properly and show little images
+# 12 July 2023: confirmed the names match fname <- paste0(atlas.path, "Schaefer2018_400Parcels_7Networks_order_info.txt");
+sch.lbls <- read.table(paste0(atlas.path, "schaefer400x7NodeNames_updated.txt"), stringsAsFactors=FALSE)[,1];
+subcort.lbls <- read.table(paste0(atlas.path, "TianSubcortexS2x3TNodeNames.txt"), stringsAsFactors=FALSE)[,1];
+subcort.lbls <- gsub("-", "_", subcort.lbls);  # to match image filenames
+
+under.img <- readNifti(paste0(atlas.path, "HCP_S1200T1w_94x111x94.nii.gz"));      # anatomy for underlay
+sch.img <- readNifti(paste0(atlas.path, "Schaefer2018_400x7_94x111x94.nii.gz"));   # parcellation image
+subcort.img <- readNifti(paste0(atlas.path, "TianSubcortexS2x3TMNI_94x111x94.nii.gz"));
+if (!all.equal(dim(sch.img), dim(under.img))) { stop("!all.equal(dim(sch.img), dim(under.img))"); }
+if (!all.equal(dim(subcort.img), dim(under.img))) { stop("!all.equal(dim(subcort.img), dim(under.img))"); }
+
+
+knot.ids <- 0:15;   # afni is zero-based
+lbls <- c("coarse", "fine", "Full_Fstat");   # timecourse file names
+y.lim <- c(-0.3, 0.4);
+mean.clrs <- c('firebrick', 'dodgerblue');  # mean.clrs <- c('salmon', 'seagreen');  
+reg.ids <- c("coarse", "fine");  
+
+#angles <- c(10, 50, 120);  # shading line angles for SEM cloud
+get.color <- function(clr) {    # clr <- "grey";
+  # adapted from http://research.stowers.org/mcm/efg/R/Color/Chart/
+  # add 22 (or whatever) onto the end for transparency, see # http://r.789695.n4.nabble.com/How-to-draw-a-transparent-polygon-td4690978.html
+  # https://en.wikipedia.org/wiki/Alpha_compositing
+  # When alpha compositing is in use, each pixel has an additional numeric value stored in its alpha channel, with a value 
+  # ranging from 0 to 1. A value of 0 means that the pixel is fully transparent and the color in the pixel beneath will show 
+  # through. A value of 1 means that the pixel is fully opaque. 
+  c <- col2rgb(clr);
+  return(paste0(sprintf("#%02X%02X%02X", c[1],c[2],c[3], c[1], c[2], c[3]), "66"));
+}
+
+
+make.plots <- function(p.ids, p.lbls, ttl.pre, do.sch) {  
+  # p.ids <- subcort.ids; p.lbls <- subcort.lbls; ttl.pre <- "p"; do.sch <- FALSE; # p.ids <- sch.ids; p.lbls <- sch.lbls; ttl.pre <- "p";  
+  # parcel picture
+  
+  if (do.sch == TRUE) { p.img <- sch.img; } else { p.img <- subcort.img; }
+  
+  for (pid in 1:length(p.ids)) {   #  pid <- 1;  #  
+    # plot(0, 0, xlim=c(0,1), ylim=c(0,1), type="n", ann=FALSE, xaxt='n', yaxt='n', xaxs='i', yaxs='i');  # blank plot
+    # mtext(side=3, text=p.lbls[pid], line=0.1, cex=0.6, adj=0);
+    # rasterImage(readJPEG(paste0(pic.path, p.lbls[pid], ".jpg"), native=TRUE),-0.1,-0.1,1.05,1.05);   # xleft, ybottom, xright, ytop,
+    
+    # start with a picture of the brain
+    inds <- which(p.img == p.ids[pid], arr.ind=TRUE);  # pick slice with most parcel values to plot.
+    ux <- unique(inds[,3]);  # find mode (http://stackoverflow.com/questions/2547402/is-there-a-built-in-function-for-finding-the-mode)
+    do.slice <- ux[which.max(tabulate(match(inds, ux)))];
+    image(under.img[,,do.slice], col=gray((0:64)/64), xlab="", ylab="", axes=FALSE, useRaster=TRUE);  # draw the underlay
+    #ttl <- paste0(sub.id, " ", subcort.tbl$parcel.label[pid], " ", subcort.tbl$hemisphere[pid], " (#", subcort.tbl$HCP.label[pid], ")");
+    mtext(side=3, text=p.lbls[pid], line=0.1, cex=0.6, adj=0);
+    #text(x=-0.05, y=0.94, labels=ttl, col='white', pos=4, cex=0.8);        # title
+    text(x=-0.05, y=0.94, labels=paste0(nrow(inds), " voxels"), col='orange', pos=4); 
+    plt.data <- p.img[,,do.slice];   # get the values for the overlay
+    plt.data2 <- array(NA, dim(plt.data));  # get rid of everything else
+    plt.data2[which(plt.data == p.ids[pid])] <- 1;  # just this parcel, this slice
+    image(plt.data2, col='red', useRaster=TRUE, add=TRUE);      # draw the overlay
+    
+    
+    # regressor plot
+    plot(x=1, y=1, type='n', xlim=c(0, length(knot.ids)+1), ylim=y.lim, ann=FALSE, cex.axis=0.6, xaxs='i', yaxs='i', xaxt='n');
+    axis(side=1, at=c(0,5,10,15), labels=c(-10,0,10,20), cex.axis=0.6);  # x-axis in seconds, not knots
+    axis(side=2, at=c(0,-0.2), labels=c(0,-0.2), cex.axis=0.6);  # add in missing y-axis labels
+    
+    mtext(text=paste0(ttl.pre, pid, ": BOTH regressors"), side=3, line=0.1, cex=0.6, adj=1);
+    grid();
+    lines(x=c(5,5), y=c(-5,15), col='black');
+    lines(x=c(-10,100), y=c(0,0), col='black');
+    # draw legend here, so doesn't cover up lines.
+    legend(x='topleft', legend=reg.ids, horiz=TRUE, cex=0.6,  box.col='white', bg='white', fill=mean.clrs);
+
+    for (rid in 1:length(reg.ids)) {     # rid <- 1; 
+      val.tbl <- array(NA, c(length(sub.ids), length(knot.ids)));
+      for (sid in 1:length(sub.ids)) {    # rid <- 2; sid <- 3;
+        in.tbl <- tc.lst[[reg.ids[rid]]][[sid]];
+        vals <- in.tbl[,paste0("Mean_", pid)]; 
+        if (length(vals) > 0) { 
+          val.tbl[sid,] <- vals;
+          #lines(x=1:length(vals), y=vals, col=reg.clrs[rid], lty='dashed', lwd=0.5); 
+        }
+      }
+      vals <- apply(val.tbl, 2, mean, na.rm=TRUE, trim=do.trim);  # group mean
+      
+      # plot SEM cloud
+      for (k in 1:(length(vals)-1)) {   # k <- 1;
+        # point order: left bottom, left top, right bottom, right top
+        se0 <- trimse(val.tbl[,k], na.rm=TRUE, tr=do.trim);   # se0 <- get.se(val.tbl[which(!is.na(val.tbl[,k])),k]);
+        se1 <- trimse(val.tbl[,k+1], na.rm=TRUE, tr=do.trim);    # se1 <- get.se(val.tbl[which(!is.na(val.tbl[,k+1])),k+1]);
+        # polygon(x=c(k,k,k+1,k+1), y=c(vals[k]-se0, vals[k]+se0, vals[k+1]+se1, vals[k+1]-se1), 
+        #         col=reg.clrs[rid], border=NA, density=30, angle=angles[rid]); 
+        polygon(x=c(k,k,k+1,k+1), y=c(vals[k]-se0, vals[k]+se0, vals[k+1]+se1, vals[k+1]-se1), col=get.color(mean.clrs[rid]), border=NA); 
+        # shade the confidence interval; adapted from http://www.alisonsinclair.ca/2011/03/shading-between-curves-in-r/
+        # lines(x=c(k,k+1), y=c(vals[k]+se0, vals[k+1]+se1), col=reg.clrs[rid]); 
+        # lines(x=c(k,k+1), y=c(vals[k]-se0, vals[k+1]-se1), col=reg.clrs[rid]); 
+      }
+      lines(x=1:length(vals), y=vals, col=mean.clrs[rid]);   # plot mean line
+      #points(vals, col=mean.clrs[rid], pch=20);
+    }
+    box(); 
+  } 
+}
+
+
+@
+
+\noindent \texttt{group\textunderscore GLMs\textunderscore noBlur\textunderscore timecourses\textunderscore meanSEM.rnw} \par
+\noindent compiled \today\  \par
+\noindent group e152 GLM results: BOTH GLM. \par
+\noindent fmriprep (20.2.3) preprocessing. GLMs fit on every voxel, then estimates averaged within Schaefer400x7 parcels.  \par
+\vspace{0.2 cm} 
+\noindent Estimates begin at the coarse or fine segmentation time, as determined after the scanning session; onsets are not in any way linked to the TR. These GLMs were modeled with \texttt{TENT(-10,20,16)}, which gives 2 seconds/knot (TR 1.483 s); more knots after than before the segmentation time. The segmentation time roughly corresponds to the fifth knot (vertical line in graphs). Knots are plotted along the x-axis, but labeled in seconds (2 seconds per knot) with zero at the segmentation time.   \par
+\vspace{0.2 cm} 
+\noindent BOTH GLM only, robust (trimmed at \Sexpr{do.trim}) mean and SEM. \Sexpr{length(sub.ids)} included subjects; participants with only FINE or only COARSE omitted.  \par
+\vspace{0.4 cm} 
+
+\noindent \textbf{Subcortical parcel-average timecourses} \par
+\vspace{0.2 cm}
+<<code1, dev='pdf', cache=TRUE, echo=FALSE, fig.height=1.4, fig.width=7.5, fig.align='center'>>=
+layout(matrix(1:6, c(1,6)));
+par(mar=c(1.2, 1, 1.2, 0.3), mgp=c(1.1, 0.2, 0), tcl=-0.3);
+# mar: c(bottom, left, top, right) gives the number of lines of margin. Default is c(5, 4, 4, 2) + 0.1.
+
+# lots of different timecourses files; load them all first to avoid repeated file i/o
+tc.lst <- list(coarse=vector('list', length(sub.ids)), fine=vector('list', length(sub.ids)));
+for (reg in c("coarse", "fine")) {   
+  for (sid in 1:length(sub.ids)) {   # reg <- "fine"; sid <- 3;
+    fname <- paste0(glm.path, sub.ids[sid], "/RESULTS_TENT20/BOTH/", sub.ids[sid], "_", reg, "_TianSubcortexS2x3TMNI_vol.txt");
+    if (file.exists(fname)) {
+      in.tbl <- read.delim(fname)[,-c(1,2)];   # take off first two (label) columns
+      if (ncol(in.tbl) != length(subcort.ids)) { stop("ERROR: unexpected in.tbl."); } else { tc.lst[[reg]][[sid]] <- in.tbl; }
+    }
+  }
+}
+
+make.plots(subcort.ids, subcort.lbls, "subcort", do.sch=FALSE);
+
+@
+
+
+\newpage
+\noindent \textbf{Schaefer 400x7 parcel-average timecourses} \par
+\vspace{0.2 cm}
+<<code2, dev='pdf', cache=TRUE, echo=FALSE, fig.height=1.4, fig.width=7.5, fig.align='center'>>=
+layout(matrix(1:6, c(1,6)));
+par(mar=c(1.2, 1, 1.2, 0.3), mgp=c(1.1, 0.2, 0), tcl=-0.3);
+# mar: c(bottom, left, top, right) gives the number of lines of margin. Default is c(5, 4, 4, 2) + 0.1.
+
+# several timecourse files; load them all first to avoid repeated file i/o
+tc.lst <- list(coarse=vector('list', length(sub.ids)), fine=vector('list', length(sub.ids)));
+for (reg in c("coarse", "fine")) {   
+  for (sid in 1:length(sub.ids)) {   # reg <- "fine"; sid <- 3;
+    fname <- paste0(glm.path, sub.ids[sid], "/RESULTS_TENT20/BOTH/", sub.ids[sid], "_", reg, "_Schaefer2018_400x7_vol.txt");
+    if (file.exists(fname)) {
+      in.tbl <- read.delim(fname)[,-c(1,2)];   # take off first two (label) columns
+      if (ncol(in.tbl) != length(sch.ids)) { stop("ERROR: unexpected in.tbl."); } else { tc.lst[[reg]][[sid]] <- in.tbl; }
+    }
+  }
+}
+
+make.plots(sch.ids, sch.lbls, "p", do.sch=TRUE);
+
+
+@
+
+
+\end{document}
