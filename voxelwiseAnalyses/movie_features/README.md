@@ -1,0 +1,5 @@
+Notebook extract_segmentation_features.ipynb will extract continuous uncertainty and prediction error timecourses from *.pkl files and saved them as 1.2.3_kinect_trim_uncertainty.csv. PE and Uncertainty timecourses currently are extracted from e.g. 3.1.3_kinect_trimfeb_24_uncertainty2.5E-03_s1070_1E+00_5E-03_diagnostic_101.pkl in 'movie_segmentation_stats'. Then, you'll need to run convo_segmentation_feature.m to HRF these timecourses, the output will be saved as 'out_convo_segmentation/conv_1.2.3_uncertainty_dtFix.csv. 
+
+SEM boundary probabilities are from 8 simulations from the same tag. SEM , human fine and coarse boundary probabilities are extracted by notebook afni_events_from_segmentation.ipynb. Then, convo_segmentation_feature.m will HRF these timecourses, the output will be saved as 'out_convo_segmentation/conv_1.2.3_sem_dtFix.csv.
+
+segmentation features in out_convo_segmentation/*_dtFix.csv are added time column and saved as out_convo_segmentation/*_dtFix_with_time.csv using add_time_to_convolved_features.ipynb.

@@ -1,12 +1,14 @@
-name: fmri-light
+name: nilearn
 channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.7
+  - python=3.9
+  - numpy
+  - pandas
   - joblib
   - scipy
-  - pandas
+  - statsmodels
   - opencv=3.4.2
   - ipython
   - jupyter
@@ -15,3 +17,7 @@ dependencies:
   - plotly
   - python-kaleido
   - dash
+  - matplotlib
+  - seaborn
+  - nilearn
+  - nibabel

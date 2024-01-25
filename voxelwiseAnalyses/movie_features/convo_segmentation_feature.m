@@ -6,8 +6,11 @@ inpath = '/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalys
 outpath = '/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/movie_features/out_convo_segmentation/';
 
 % change pe or uncertainty here
-colids = {'rowid' 'frame_id' 'time' 'first_second' 'uncertainty'};
+% colids = {'rowid' 'frame_id' 'time' 'first_second' 'uncertainty'};
 % colids = {'rowid' 'frame_id' 'time' 'first_second' 'pe'};
+colids = {'rowid' 'frame_id' 'time' 'first_second' 'sem'};
+% colids = {'rowid' 'frame_id' 'time' 'first_second' 'coarse'};
+% colids = {'rowid' 'frame_id' 'time' 'first_second' 'fine'};
 runids = {'1.2.3' '6.3.9' '3.1.3' '2.4.1'};  % movie names in run order
 
 dt = 1/3;    % movie-stat sampling rate, in seconds    
@@ -20,8 +23,11 @@ TR = 1.483;   % in seconds
 for rid = 1:4    % rid = 1; 
     
     % change pe or uncertainty here
-    infname = [inpath  runids{rid} '_kinect_trim_uncertainty.csv'];  % input filename
+%     infname = [inpath  runids{rid} '_kinect_trim_uncertainty.csv'];  % input filename
 %     infname = [inpath  runids{rid} '_kinect_trim_pe.csv'];  % input filename
+    infname = [inpath  runids{rid} '_kinect_trim_sem.csv'];  % input filename
+%     infname = [inpath  runids{rid} '_kinect_trim_coarse.csv'];  % input filename
+%     infname = [inpath  runids{rid} '_kinect_trim_fine.csv'];  % input filename
     intbl = readmatrix(infname);
     first_second = intbl(1, 3);
     last_second = intbl(size(intbl, 1), 3);

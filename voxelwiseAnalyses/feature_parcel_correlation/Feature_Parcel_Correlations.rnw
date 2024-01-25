@@ -32,7 +32,8 @@ options(warnPartialMatchDollar = TRUE)
 ## ROOT directory and fixed variables
 in.path <- "/data/nil-external/dcl/Events152_fMRI_NeuralMechanisms/voxelwiseAnalyses/"
 # sub.ids <- c(paste0("0", 1:9), 11:31, 33:37);
-sub.ids <- c(paste0("0", 1:9), 11:47);
+# sub.ids <- c(paste0("0", 1:9), 11:47);
+sub.ids <- c(paste0("0", 1:9), 12:47);
 # sub.ids <- c("02", "33");
 run.ids <- 1:4;
 nframes <- c(405, 467, 404, 444);  # number of frames in each run, run.ids order
@@ -42,14 +43,14 @@ mov.ids <- c("1.2.3", "6.3.9", "3.1.3", "2.4.1");  # clip names in run.ids order
 
 ## Feature-specific parameters can be changed here to switch between PE and visual features (e.g. pixel change mean)
 # movie.features <- c("pe", "uncertainty")
+movie.features <- c("sem", "coarse", "fine")
 # movie.features <- c("pixel_change_mean", "pixel_change_var", "luminance_mean", "luminance_var")
-movie.features <- c("pixel_change_mean")
 # first and last TR of movie stat timeseries to correlate with parcel timeseries
 first <- 1
 last <- 550  # this number can exceed nframes, which is ok.
 # input directory of the convoluted feature timeseries
-# in_feature_dir <- paste0(in.path, "movie_features/out_convo_segmentation/")
-in_feature_dir <- paste0(in.path, "movie_features/out_convo_visual/")
+in_feature_dir <- paste0(in.path, "movie_features/out_convo_segmentation/")
+# in_feature_dir <- paste0(in.path, "movie_features/out_convo_visual/")
 
 onset.tbl <- read.table(paste0(in.path, "subject_movie_onset/e152onsets.txt"));  # delay between first TR and movie onset, in sec
 #  head(onset.tbl)
@@ -76,6 +77,9 @@ TR <- 1.483;   # TR in seconds
 # indexTable.csv is fetched from: https://github.com/PennLINC/xcpEngine/tree/master/atlas/TianSubcortexS2x3T and then modified to replace "-" with "_", avoiding R confusion (when reading the file, R will treat "-" as ".")
 subcort.tbl <- read.csv(paste0(in.path, "atlas/indexTable.csv"), stringsAsFactors=FALSE);  
 subcortical.ids <- subcort.tbl$node_label
+subcortical_np2.tbl <- read.csv("/data/nil-bluearc/ccp-hcp/StroopCW/ATLASES/subcorticalKey.csv", stringsAsFactors=FALSE)
+# join hemisphere and parcel name, e.g. "L, amygdala -> LH_amygdala" (consistent with Tian and Schaefer naming convention)
+subcortical_np2.ids <- paste0(subcortical_np2.tbl$hemisphere, "H_", subcortical_np2.tbl$parcel.label)
 # read node labels from the Schaefer2018_400x7 parcellation, fetched from: https://raw.githubusercontent.com/ThomasYeoLab/CBIG/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal/Parcellations/HCP/fslr32k/cifti/Schaefer2018_400Parcels_7Networks_order_info.txt
 # read a text file, each line is a node label
 sch.tbl <- read.csv(paste0(in.path, "atlas/schaefer400x7NodeNames_updated.txt"), stringsAsFactors=FALSE, header=FALSE);
@@ -83,6 +87,8 @@ sch.ids <- sch.tbl[1:400, ];   # Schaefer2018_400x7 parcellation
 
 # change preprocessing type, either xcp_36p_despike, xcp_24p_gsr, xcp_24p or np2
 preproc <- "xcp_24p_gsr";
+# preproc <- "xcp_24p";
+# preproc <- "np2";
 cat(paste("\n\nPreprocessed Data from", preproc, "\n\n"))
 
 # output directory for correlation between feature timeseries and parcel timeseries, depending on feature type and parcel type
@@ -133,7 +139,6 @@ read.xcp.schaefer <- function(sid, rid) {
   }
 }
 
-# TODO: find where to read subcortical data, then finish this function
 read.xcp.subcortical <- function(sid, rid) {
   fname <- paste0(in.path, "parcel_timeseries/", preproc, "/XCP_OUTPUT_", sid, "/sub-", sid, "/run-", rid, "/fcon/TianSubcortexS2x3T/sub-", sid, "_run-", rid, "_", suff_subcortical_xcp, ".1D")
   if (file.exists(fname)) {
@@ -154,7 +159,7 @@ read.xcp.subcortical <- function(sid, rid) {
 
 read.np2.schaefer <- function(sid, rid) {
   # fname <- paste0(in.path, "np2/sub-", sid, "_run-", rid, "_", suff_sch_np2, ".txt")
-    fname <- paste0(in.path, "parcel_timeseries/", preproc, "/sub-", sid, "_run-", rid, "_", suff_sch_np2, ".txt")
+  fname <- paste0(in.path, "parcel_timeseries/", preproc, "/sub-", sid, "_run-", rid, "_", suff_sch_np2, ".txt")
   if (file.exists(fname)) {
     np2.tbl <- read.delim(fname)
     np2.tbl <- np2.tbl[, -c(1, 2)]  # remove the first two label columns
@@ -172,11 +177,32 @@ read.np2.schaefer <- function(sid, rid) {
   }
 }
 
+read.np2.subcortical <- function(sid, rid) {
+  # fname <- paste0(in.path, "np2/sub-", sid, "_run-", rid, "_", suff_sch_np2, ".txt")
+  fname <- paste0(in.path, "parcel_timeseries/", preproc, "/sub-", sid, "_run-", rid, "_", suff_subcortical_np2, ".txt")
+  if (file.exists(fname)) {
+    np2.tbl <- read.delim(fname)
+    np2.tbl <- np2.tbl[, -c(1, 2)]  # remove the first two label columns
+    # check if any column if np2.tbl have all values equal to 0
+    if (any(apply(np2.tbl, 2, function(x) all(x==0)))) { 
+      stop(paste("all 0s in np2.tbl for at least 1 parcel for subject", sid, "run", rid)) 
+      }
+    if (nrow(np2.tbl) != nframes[rid] || ncol(np2.tbl) != length(subcortical_np2.ids)) { 
+      stop(paste("wrong np2.tbl", nrow(np2.tbl), "!=", nframes[rid], "||", ncol(np2.tbl), "!=", length(subcortical_np2.ids)))
+      }
+    return(np2.tbl)
+  } else { 
+    msg <- paste("missing", fname)
+    stop(msg)
+  }
+}
+
 trim.sub.onset <- function(parcel.tbl, sid, rid) {
   ## fMRI frames were obtained before the movie started, so we need to trim the first few frames
   sub.onset <- onset.tbl[which(onset.tbl$sub.id == paste0("sub-", sid)), paste0("run", rid, "_", mov.ids[rid])]; # onset in seconds
   sub.onset <- sub.onset + feature.onsets[rid];  # if not a visual feature, how much time between movie start and PE start
-  TR.onset <- round(sub.onset/TR);   # onset, in TR    
+  TR.onset <- round(sub.onset/TR) + 1;   # onset, in TR    
+  # TR.onset <- ceiling(sub.onset/TR) + 1;   # onset, in TR    
   # return trimmed parcel.tbl
   return(parcel.tbl[(TR.onset:nframes[rid]), ])
 }
@@ -292,9 +318,10 @@ just.plot.median <- function(do.col, rid) {
 \noindent DCL events152 positive controls, with matlab convolution and downsampling. \par
 \noindent files under \texttt{/data/nil-external/dcl/Events152\textunderscore fMRI\textunderscore NeuralMechanisms/voxelwiseAnalyses/} \par
 \vspace{0.2 cm} 
-\noindent 47 people watched movies in four fMRI runs; everyone watched the same movie in each run (four different movies total; same order for everyone). Images were preprocessed with fmriprep (volumes only), then np2 detrended and normalized, and parcel-averaged using the Schaefer2018 400x7 parcellation (\texttt{analysisPrep.R}), then XCP engine (24p, gsr). The runs had the same number of volumes for everyone but the movie onsets varied a bit (7.9 to 11.4 seconds); see \texttt{e152onsets.txt} and \texttt{getOnsets.R}. \par
+\noindent 47 people watched movies in four fMRI runs; everyone watched the same movie in each run (four different movies total; same order for everyone). Images were preprocessed with fmriprep (volumes only), then np2 detrended and normalized, and parcel-averaged using the Schaefer2018 400x7 parcellation (\texttt{analysisPrep.R}), then XCP engine (24p, w/o gsr). The runs had the same number of volumes for everyone but the movie onsets varied a bit (7.9 to 11.4 seconds); see \texttt{e152onsets.txt} and \texttt{getOnsets.R}. \par
 \vspace{0.2 cm}
 \noindent Tan Nguyen created the files with PE and Uncertainty statistics experienced by SEM model for each frame of each movie. These stats are every 0.333 seconds, much faster than the BOLD or the TR (1.483 sec). These stats were convolved and downsampled by running \texttt{convo\textunderscore seg\textunderscore trigger.m} \par
+\noindent Dec 31 2023, Tan Nguyen created the files with SEM and human fine and coarse boundary probabilities for each frame of each movie. These stats are also every 0.333 seconds, much faster than the BOLD or the TR (1.483 sec). These stats were convolved and downsampled by running \texttt{convo\textunderscore seg\textunderscore trigger.m} \par
 \vspace{0.2 cm}
 \noindent Aligning the movie and BOLD timeseries properly before correlating has been a challenge, but seems to be sorted now. The first section shows the median correlation for each movie statistic and run at offset 0. \par
 
@@ -328,7 +355,7 @@ text(x=128, y=0, labels=plims[2], adj=0, cex=0.7);
 <<code2, dev='pdf', cache=TRUE, echo=FALSE, fig.height=1, fig.width=8, fig.align='center'>>=
 
 # calculate parcel-feature correlation and save into a table for each feature-movie.
-# Note that this code needs to be modifed to work with subcortical parcels.  It's currently set up for Schaefer parcels only.
+# Note that there is no error catching here, so if one of the parcel timeseries is corrupted and cannot be read, the loop will break and there will not be timeseries to correlate (so there will be no *.txt in e.g. "seg_xcp_24p_corrs_1_550" ). This should inform you to go back and check results from XCP engine
 for (do.col in movie.features) {
   for (rid in run.ids) {
     ## load the movie feature timeseries
@@ -340,7 +367,12 @@ for (do.col in movie.features) {
       if (do.par == "Schaefer2018_400x7") {
         p.ids <- sch.ids
       } else if (do.par == "subcortical") {
-        p.ids <- subcortical.ids
+        # if np2, then use subcortical_np2.ids, or else use subcortical.ids
+        if (grepl('np2', preproc)) {
+          p.ids <- subcortical_np2.ids
+        } else {
+          p.ids <- subcortical.ids
+        }
       }
       out.tbl <- data.frame(array(NA, c(length(sub.ids), length(p.ids) + 1)))
       colnames(out.tbl) <- c("sub.id", p.ids)
@@ -359,6 +391,7 @@ for (do.col in movie.features) {
           }
           if (do.par == "subcortical") {
             parcel.tbl <- read.np2.subcortical(sub.ids[i], rid)
+            p.ids <- p.ids
           }
         } else {
           stop(paste("Error: unknown preproc, must be either xcp or np2, get: ", preproc))
@@ -382,6 +415,7 @@ for (do.col in movie.features) {
     }
   }
 }
+# cat("Not calculating correlations, already have")
 
 @
 
@@ -433,36 +467,36 @@ text(x=128, y=0, labels=plims[2], adj=0, cex=0.7)
 #   }
 # }
 
-cat("\n\nGrouping by Subject")
-# grouping by movie
-for (do.col in movie.features) {
-  str <- paste("\n\nplot", do.col, "correlations with parcel timeseries")
-  # replace underscores with spaces
-  str <- gsub("_", " ", str)
-  cat(str)
-  for (sid in sub.ids) {
-    cat(paste("\n\nsubject", sid, "the four runs"))
-    for (rid in run.ids) {
-      # str <- paste("\n\nsubjects", sid, "run", mov.ids[rid])
-      # str <- gsub("_", " ", str)
-      # cat(str)
-      just.plot.subject(do.col=do.col, rid=rid, sid=sid)
-    }
-    cat("\n\\newpage\n")
-  }
-}
-
+# cat("\n\nGrouping by Subject")
+# # grouping by movie
 # for (do.col in movie.features) {
 #   str <- paste("\n\nplot", do.col, "correlations with parcel timeseries")
 #   # replace underscores with spaces
 #   str <- gsub("_", " ", str)
 #   cat(str)
-#   for (rid in run.ids) {
-#     cat(paste("\n\nrun", mov.ids[rid]))
-#     just.plot.median(do.col = do.col, rid = rid)
+#   for (sid in sub.ids) {
+#     cat(paste("\n\nsubject", sid, "the four runs"))
+#     for (rid in run.ids) {
+#       # str <- paste("\n\nsubjects", sid, "run", mov.ids[rid])
+#       # str <- gsub("_", " ", str)
+#       # cat(str)
+#       just.plot.subject(do.col=do.col, rid=rid, sid=sid)
+#     }
+#     cat("\n\\newpage\n")
 #   }
-#   cat("\n\\newpage\n")
 # }
+
+for (do.col in movie.features) {
+  str <- paste("\n\nplot", do.col, "median correlations with parcel timeseries")
+  # replace underscores with spaces
+  str <- gsub("_", " ", str)
+  cat(str)
+  for (rid in run.ids) {
+    cat(paste("\n\nrun", mov.ids[rid]))
+    just.plot.median(do.col = do.col, rid = rid)
+  }
+  cat("\n\\newpage\n")
+}
 @
 
 
